@@ -14,6 +14,10 @@ import { DIDCommMessageHandler } from '@veramo/did-comm'
 const DATABASE_FILE = 'database.sqlite'
 const KMS_SECRET_KEY = '192315f5fc731222950671b7bc39226c8b8b79b8a35274b6a3e34d808d22b153'
 
+const keyTypes = {
+  "Secp256k1": "EcdsaSecp256k1VerificationKey2019"
+}
+
 let myDid
 const myDidAlias = 'samuelmr.github.io:difhack-company'
 
@@ -65,7 +69,34 @@ if (myDid.length == 0) {
 const server = Bun.serve({
   port: 3000,
   async fetch(request) {
-    return new Response(JSON.stringify(myDid))
+    const didDoc = {
+      "@context": [
+          "https://www.w3.org/ns/did/v1",
+          "https://w3id.org/security/v2",
+          "https://w3id.org/security/suites/secp256k1recovery-2020/v2"
+      ],
+      "id": `did:web:${myDidAlias}`,
+      "verificationMethod": [],
+      "authentication": [],
+      "assertionMethod": [],
+      "keyAgreement": [],
+      "service": []
+    }
+    for (const key of myDid[0].keys) {
+      const keyId = `did:web:${myDidAlias}#${key.kid}`
+      didDoc.verificationMethod.push({
+        "id": keyId,
+        "type": keyTypes[key.type],
+        "controller": `did:web:${myDidAlias}`,
+        "publicKeyHex": key.publicKeyHex
+      })
+      didDoc.authentication.push(keyId)
+      didDoc.assertionMethod.push(keyId)
+    }
+    for (const service of myDid[0].services) {
+      didDoc.service.push(service)
+    }
+    return new Response(JSON.stringify(didDoc))
   },
 })
 
