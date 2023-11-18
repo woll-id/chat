@@ -11,6 +11,11 @@ import { DataSource } from 'typeorm'
 import { MessageHandler } from '@veramo/message-handler'
 import { DIDCommMessageHandler } from '@veramo/did-comm'
 
+const myDidAlias = 'samuelmr.github.io:difhack-company'
+const myDidCommUrl = 'https://company.tiedot.me'
+const my httpPort = 3000
+const myDidAlias = 'samuelmr.github.io:difhack-company'
+
 const DATABASE_FILE = 'database.sqlite'
 const KMS_SECRET_KEY = '192315f5fc731222950671b7bc39226c8b8b79b8a35274b6a3e34d808d22b153'
 
@@ -19,7 +24,6 @@ const keyTypes = {
 }
 
 let myDid
-const myDidAlias = 'samuelmr.github.io:difhack-company'
 
 const dbConnection = new DataSource({
   type: 'sqlite',
@@ -67,7 +71,7 @@ if (myDid.length == 0) {
 }
 
 const server = Bun.serve({
-  port: 3000,
+  port: httpPort,
   async fetch(request) {
     const didDoc = {
       "@context": [
@@ -80,7 +84,14 @@ const server = Bun.serve({
       "authentication": [],
       "assertionMethod": [],
       "keyAgreement": [],
-      "service": []
+      "service": [
+        {
+          "id": "#messaging",
+          "type": "DIDCommMessaging",
+          "serviceEndpoint": `${myDidCommUrl}#messaging`,
+          "description": "Send and receive messages"
+        }
+      ]
     }
     for (const key of myDid[0].keys) {
       const keyId = `did:web:${myDidAlias}#${key.kid}`
