@@ -1,3 +1,24 @@
 {
-  "id": "did:web:samuelmr.github.io:difhack-company"
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/v2",
+    "https://w3id.org/security/suites/secp256k1recovery-2020/v2"
+  ],
+  "id": "did:web:samuelmr.github.io:difhack-company",
+  "verificationMethod": [
+    {
+      "id": "did:web:samuelmr.github.io:difhack-company#0452999adb9f991d5d6c76917d36a76cba4409ab4dbb51962f5806c2221da5b908a95f372ea83d00805a1402053f856c16af79dd1683b51f506d946a0a2746559d",
+      "type": "EcdsaSecp256k1VerificationKey2019",
+      "controller": "did:web:samuelmr.github.io:difhack-company",
+      "publicKeyHex": "0452999adb9f991d5d6c76917d36a76cba4409ab4dbb51962f5806c2221da5b908a95f372ea83d00805a1402053f856c16af79dd1683b51f506d946a0a2746559d"
+    }
+  ],
+  "authentication": [
+    "did:web:samuelmr.github.io:difhack-company#0452999adb9f991d5d6c76917d36a76cba4409ab4dbb51962f5806c2221da5b908a95f372ea83d00805a1402053f856c16af79dd1683b51f506d946a0a2746559d"
+  ],
+  "assertionMethod": [
+    "did:web:samuelmr.github.io:difhack-company#0452999adb9f991d5d6c76917d36a76cba4409ab4dbb51962f5806c2221da5b908a95f372ea83d00805a1402053f856c16af79dd1683b51f506d946a0a2746559d"
+  ],
+  "keyAgreement": [],
+  "service": []
 }
