@@ -177,5 +177,5 @@ dist
 # SQLite DB
 database.sqlite
 
-# Bun lockfile (no need for repeatable builds)
-bun.lockb
+# Veramo configuration
+agent.yml
