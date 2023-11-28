@@ -14,10 +14,17 @@
     "@veramo/data-store": "^5.5.3",
     "@veramo/did-comm": "^5.5.3",
     "@veramo/did-manager": "^5.5.3",
+    "@veramo/did-provider-key": "^5.5.3",
+    "@veramo/did-provider-peer": "^5.5.3",
     "@veramo/did-provider-web": "^5.5.3",
     "@veramo/did-resolver": "^5.5.3",
     "@veramo/key-manager": "^5.5.3",
     "@veramo/kms-local": "^5.5.3",
+    "@veramo/remote-server": "^5.5.3",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "js-yaml": "^4.1.0",
     "sqlite3": "^5.1.6",
     "web-did-resolver": "^2.0.27"
   }
