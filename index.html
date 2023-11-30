@@ -1,0 +1,106 @@
+
+<!doctype html>
+<html>
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="width">
+  <title>Secure Chat test</title>
+  <style>
+    fieldset {
+        border-radius: 0.5em;
+        max-width: 20em;
+    }
+    legend {
+        background-color: #FFF;
+    }
+    label, textarea, input[type="submit"], #messages {
+        display: block;
+        clear: left;
+        float: left;
+    }
+    #messages p {
+        background-color: #FFF;
+        border: 1px solid #CCC;
+        border-radius: 0.5em;
+        margin-left: 10%;
+        width: 90%;
+    }
+    #messages p.other {
+        background-color: aqua;
+        margin-left: 0;
+    }
+    label {
+        width: 11ex;
+    }
+  </style>
+ </head>
+ <body>
+  <h1>Secure Chat test</h1>
+  <form id="form">
+   <fieldset>
+    <legend>Chat</legend>
+    <label for="to">To:</label> <input id="to" name="to" size="30"/>
+    <label for="name">Name:</label> <input id="name" name="name" size="30"/>
+    <label for="topic">Topic:</label> <input id="topic" name="topic" size="30"/>
+     <div id="messages"></div>
+     <label for="message">Message:</label>
+     <textarea id="message" name="message" cols="30" rows="5"></textarea>
+     <input type="submit" name="action" value="Send">
+   </fieldset>
+  </form>
+  <script>
+   const msgs = document.getElementById('messages')
+
+   const url = document.location.href.replace(/^https/, 'wss').replace(/\/?$/, '/ws')
+   console.log(url)
+   const socket = new WebSocket(url)
+   console.log(socket)
+   socket.addEventListener("open", (event) => {
+    console.log('socket opened')
+    // socket.send("Hello Server!")
+    console.log(socket.readyState)
+   })
+   socket.addEventListener("error", (event) => {
+    console.log(event)
+   })
+   socket.addEventListener("message", (event) => {
+    console.log(socket.readyState)
+    console.log(event)
+    const msg = event.data
+    console.log(msg)
+    const p = document.createElement('p')
+    p.className = 'other'
+    p.textContent = msg
+    msgs.appendChild(p)
+   })
+
+   const f = document.getElementById('form')
+   f.onsubmit = function(e) {
+    e.preventDefault()
+    const msg = {
+     alias: 'company.ctrldash.app:customercare:call:bob',
+     thread: this.topic.value,
+     toDid: `did:web:${this.to.value}`,
+     message: this.message.value
+    }
+    console.log(JSON.stringify(msg))
+    socket.send(JSON.stringify(msg))
+   }
+
+
+/*
+   socket.onmessage((event) => {
+    const msg = event.data
+    console.log(msg)
+    const p = document.createElement('p')
+    p.className = 'other'
+    p.textContent = msg
+    msgs.appendChild(p)
+   })
+*/
+  </script>
+ </body>
+</html>
