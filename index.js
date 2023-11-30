@@ -46,7 +46,6 @@ const didDocPath = path.length == 0 ? '/.well-known/did.json' : `${path}/did.jso
 // const schemaPath = `${path}/open-api.json`
 
 const httpPort = parseInt(config.constants.port)
-// const wsPort = 5050
 
 const didCommType = 'application/didcomm-encrypted+json'
 
