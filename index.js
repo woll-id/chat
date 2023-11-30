@@ -14,11 +14,12 @@ import { PeerDIDProvider, getResolver } from '@veramo/did-provider-peer'
 import { WebDIDProvider } from '@veramo/did-provider-web'
 import { MessageHandler, Message } from '@veramo/message-handler'
 import { DIDComm, DIDCommMessageHandler } from '@veramo/did-comm'
-import { AgentRouter, ApiSchemaRouter, WebDidDocRouter, MessagingRouter, RequestWithAgentRouter } from '@veramo/remote-server'
+// import { AgentRouter, ApiSchemaRouter, WebDidDocRouter, MessagingRouter, RequestWithAgentRouter } from '@veramo/remote-server'
 import { bytesToBase58, bytesToMultibase, hexToBytes } from '@veramo/utils'
 import express from 'express'
 import cors from 'cors'
 import bodyParser from 'body-parser'
+import expressWs from 'express-ws'
 // import session from 'express-session'
 
 const configFile = './agent.yml'
@@ -32,6 +33,7 @@ if (pathParts.length) {
 }
 const messagingEndpoint = config.server.init[0]['$args'][0].messagingServiceEndpoint
 const messagingPath = `${path}${messagingEndpoint}`
+const sendPath = `${path}/send`
 
 const myDidAlias = [host, ...pathParts].join(':')
 const didDocPath = path.length == 0 ? '/.well-known/did.json' : `${path}/did.json`
@@ -55,6 +57,7 @@ const keyTypes = {
 }
 
 let myDid
+let socket
 
 const dbConnection = new DataSource({
   type: 'sqlite',
@@ -190,11 +193,42 @@ function getDidDocument(req, res) {
   res.json(didDoc)
 }
 
+async function sendMessage(req, res) {
+  const message = req.query.message
+  const thread = req.query.thread
+  const fromDid = req.query.fromDid
+  const toDid = req.query.toDid
+  const now = new Date()
+  const msgId = now.toISOString()
+  // const didCommMsg = new Message({metaData: msg.metaData })
+  const didCommMsg = new Message({})
+  didCommMsg.id = msgId
+  didCommMsg.created_time = now.getTime() // createdAt
+  didCommMsg.thid = thread // threadId
+  didCommMsg.type = 'Simple Chat'
+  didCommMsg.from = fromDid
+  didCommMsg.to = toDid
+  didCommMsg.body = { content: message } // data
+  console.log(didCommMsg)
+  const packeddidCommMsg = await agent.packDIDCommMessage({
+    packing: 'authcrypt',
+    message: didCommMsg,
+  })
+  console.log(packeddidCommMsg)
+  const result = await agent.sendDIDCommMessage({
+    messageId: msgId,
+    threadId: thread,
+    packedMessage: packeddidCommMsg,
+    recipientDidUrl: didCommMsg.to,
+  })
+  res.json(result)
+}
+
 async function receiveMessage(req, res) {
   let json
   let raw
   if (req.method == 'GET') {
-    json = req.params
+    json = req.query
     raw = JSON.stringify(json)
   }
   else if (typeof(req.body) == typeof({})) {
@@ -216,6 +250,17 @@ async function receiveMessage(req, res) {
   try {
     const msg = await agent.handleMessage({raw: raw})
     console.log(msg)
+    if (socket) {
+      socket.on('message', (reply) => {
+        console.log(reply)
+      })
+      socket.send(JSON.stringify(msg))
+      res.send('OK')
+    }
+    else {
+      res.status(503).headers('Retry-After: 10').send('Websocket not yet listening. Please try again later!')
+    }
+    /*
     // await agent.dataStoreSaveMessage(msg)
     const now = new Date()
     const msgId = now.toISOString()
@@ -249,12 +294,17 @@ async function receiveMessage(req, res) {
       res.contentType('text/plain').send(packedReply.message)
       console.log(`Responded with ${packedReply.message}`)
     }
+    */
   }
   catch(e) {
     console.warn('Error parsing message')
     console.log(JSON.stringify(json, null, 1))
     console.error(e)
   }
+}
+
+async function setupSockets(ws, req) {
+  socket = ws
 }
 
 const dids = await agent.didManagerFind({ alias: myDidAlias })
@@ -265,11 +315,16 @@ else {
   myDid = await createDID().catch(console.error)
 }
 
+/*
 const messagingRouter = MessagingRouter({
   metaData: { type: 'express' },
 })
+*/
+
+
 
 const app = express()
+expressWs(app)
 app.set('trust proxy', 1)
 app.use(cors())
 app.use(bodyParser.json({type: didCommType}))
@@ -277,8 +332,11 @@ app.use(bodyParser.text({type: 'text/plain'}))
 app.get(path, (req, res) => { res.json(agent.availableMethods()) })
 app.post(messagingPath, receiveMessage)
 app.get(messagingPath, receiveMessage)
+app.get(sendPath, sendMessage)
 app.get(didDocPath, getDidDocument)
+app.ws('/', setupSockets)
 var server = app.listen(httpPort, (err) => {
   if (err) { console.error(err) }
   console.log(`Server running on port ${httpPort}, public address ${baseUrl}`)
 })
+
