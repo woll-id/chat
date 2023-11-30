@@ -46,7 +46,7 @@ const didDocPath = path.length == 0 ? '/.well-known/did.json' : `${path}/did.jso
 // const schemaPath = `${path}/open-api.json`
 
 const httpPort = parseInt(config.constants.port)
-const wsPort = 5050
+// const wsPort = 5050
 
 const didCommType = 'application/didcomm-encrypted+json'
 
@@ -63,8 +63,8 @@ const keyTypes = {
   Bls12381G2: 'Bls12381G2Key2020',
 }
 
-let myDid
-let socket
+// let myDid
+let server, socketServers = {}
 
 const dbConnection = new DataSource({
   type: 'sqlite',
@@ -231,7 +231,7 @@ async function sendDidCommMessage(fromDid, toDid, thread, message) {
     to: toDid,
     body: { content: message }, // data
   }
-  // console.log(didCommMsg)
+  console.log(didCommMsg)
   try {
     const packeddidCommMsg = await agent.packDIDCommMessage({
       packing: 'authcrypt',
@@ -244,9 +244,11 @@ async function sendDidCommMessage(fromDid, toDid, thread, message) {
       packedMessage: packeddidCommMsg,
       recipientDidUrl: didCommMsg.to,
     })
+    console.log(`Message sent to ${toDid}`)
     return result
   }
   catch (e) {
+    console.error(e)
     return false
   }
 }
@@ -343,13 +345,14 @@ async function receiveMessage(req, res) {
   }
 }
 
+/*
+
 const wss = new WebSocketServer({ port: wsPort })
 console.log(`Websocket server listening on ${wsPort}`)
 wss.on('connection', async function connection(ws) {
   socket = ws
   socket.on('error', console.error);
   socket.on('message', async (data) => {
-    console.log(typeof data)
     console.log(data.toString())
     let json
     try {
@@ -362,11 +365,17 @@ wss.on('connection', async function connection(ws) {
     }
     const { alias, toDid, message, thread } = json
     const fromDid = `did:web:${alias}`
-    const result = await sendDidCommMessage(fromDid, toDid, thread, message)
+    try {
+      const result = await sendDidCommMessage(fromDid, toDid, thread, message)
+    }
+    catch(e) {
+      console.error(e)
+    }
     // socket.send(result)
   })
 
 });
+*/
 
 const app = express()
 app.set('trust proxy', 1)
@@ -385,10 +394,49 @@ app.post(messagingPath, receiveMessage)
 app.get(messagingPath, receiveMessage)
 app.get(sendPath, sendMessageHTTP)
 app.get(didDocPath, getDidDocument)
-// app.ws(wsPath, setupSockets)
-app.get(wsPath, (req, res) => { console.log('http call to ws path'); res.send('http call to ws path') })
-var server = app.listen(httpPort, (err) => {
+// app.get(wsPath, (req, res) => {console.log(req.headers); res.set('Upgrade: websocket').set('Connection: upgrade').sendStatus(101)})
+server = app.listen(httpPort, (err) => {
   if (err) { console.error(err) }
   console.log(`Server running on port ${httpPort}, public address ${baseUrl}`)
 })
+server.on('upgrade', setupSocket)
 
+async function setupSocket(req, socket, head) {
+  console.log(req.url)
+  let user = ''
+  if (multiUser) {
+    user = req.url.replace('/', ':')
+  }
+  const wsServer = new WebSocketServer({ noServer: true })
+  wsServer.on('connection', function connection(ws) {
+    ws.on('error', console.error)
+    ws.on('message', async (data) => {
+      console.log(data.toString())
+      let json
+      try {
+        json = JSON.parse(data.toString())
+      }
+      catch(e) {
+        console.error('Could not parse JSON!')
+        console.log(payload)
+        socket.send('Error')
+      }
+      let alias = [host, ...pathParts].join(':') + user
+      const { toDid, message, thread } = json
+      const fromDid = `did:web:${alias}`
+      try {
+        const result = await sendDidCommMessage(fromDid, toDid, thread, message)
+      }
+      catch(e) {
+        console.error(e)
+      }
+      // socket.send(result)
+    })
+  });
+  socketServers[user] = wsServer
+  console.log(`Initiated websocket server for ${user}`)
+  wsServer.handleUpgrade(req, socket, head, (ws) => {
+    console.log(`Handling upgrade for ${user}`)
+    wsServer.emit('connection', ws, req)
+  })
+}
