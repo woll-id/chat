@@ -57,18 +57,13 @@
    const url = document.location.href.replace(/^https/, 'wss').replace(/\/?$/, '/ws')
    console.log(url)
    const socket = new WebSocket(url)
-   console.log(socket)
    socket.addEventListener("open", (event) => {
-    console.log('socket opened')
-    // socket.send("Hello Server!")
-    console.log(socket.readyState)
+    // console.log('socket opened')
    })
    socket.addEventListener("error", (event) => {
     console.log(event)
    })
    socket.addEventListener("message", (event) => {
-    console.log(socket.readyState)
-    console.log(event)
     const msg = event.data
     console.log(msg)
     const p = document.createElement('p')
@@ -80,14 +75,17 @@
    const f = document.getElementById('form')
    f.onsubmit = function(e) {
     e.preventDefault()
+    let toPath = this.to.value
+      .replace(/^(https?:\/\/)/, '')
+      .replace(/\/?$/, '')
+      .replace('/', ':')
     const msg = {
-     alias: 'company.ctrldash.app:customercare:call:bob',
      thread: this.topic.value,
-     toDid: `did:web:${this.to.value}`,
+     toDid: `did:web:${toPath}`,
      message: this.message.value
     }
-    console.log(JSON.stringify(msg))
     socket.send(JSON.stringify(msg))
+    console.log(JSON.stringify(msg))
    }
 
 
