@@ -269,7 +269,7 @@ async function sendMessageHTTP(req, res) {
 async function receiveMessage(req, res) {
   let user = ''
   if (multiUser) {
-    user = req.url.replace('/', ':')
+    user = req.url.replace(messagingEndpoint, '').replace('/', ':')
   }
   const socket = sockets[user]
   let json
@@ -298,11 +298,13 @@ async function receiveMessage(req, res) {
     const msg = await agent.handleMessage({raw: raw})
     console.log(msg)
     if (socket) {
-      socket.send(JSON.stringify(msg.data.content))
+      // socket.send(JSON.stringify(msg.data.content))
+      socket.send(msg.data.content)
       res.send('OK')
       console.log('Relayed to websocket')
     }
     else {
+      console.log(`No socket for ${user}`)
       res.set('Retry-After: 10').status(503).send('Websocket not yet listening. Please try again later!')
       console.log('Could not relay to websocket')
     }
