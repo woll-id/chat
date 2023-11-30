@@ -63,7 +63,7 @@ const keyTypes = {
 }
 
 // let myDid
-let server, socketServers = {}
+let server, sockets = {}
 
 const dbConnection = new DataSource({
   type: 'sqlite',
@@ -267,6 +267,11 @@ async function sendMessageHTTP(req, res) {
 }
 
 async function receiveMessage(req, res) {
+  let user = ''
+  if (multiUser) {
+    user = req.url.replace('/', ':')
+  }
+  const socket = sockets[user]
   let json
   let raw
   if (req.method == 'GET') {
@@ -401,13 +406,13 @@ server = app.listen(httpPort, (err) => {
 server.on('upgrade', setupSocket)
 
 async function setupSocket(req, socket, head) {
-  console.log(req.url)
-  let user = ''
+  let user = '' // even empty string can be used as an object key
   if (multiUser) {
     user = req.url.replace('/', ':')
   }
   const wsServer = new WebSocketServer({ noServer: true })
   wsServer.on('connection', function connection(ws) {
+    sockets[user] = ws
     ws.on('error', console.error)
     ws.on('message', async (data) => {
       console.log(data.toString())
@@ -418,7 +423,7 @@ async function setupSocket(req, socket, head) {
       catch(e) {
         console.error('Could not parse JSON!')
         console.log(payload)
-        socket.send('Error')
+        ws.send('Error')
       }
       let alias = [host, ...pathParts].join(':') + user
       const { toDid, message, thread } = json
@@ -429,10 +434,8 @@ async function setupSocket(req, socket, head) {
       catch(e) {
         console.error(e)
       }
-      // socket.send(result)
     })
-  });
-  socketServers[user] = wsServer
+  })
   console.log(`Initiated websocket server for ${user}`)
   wsServer.handleUpgrade(req, socket, head, (ws) => {
     console.log(`Handling upgrade for ${user}`)
