@@ -19,8 +19,11 @@ import { bytesToBase58, bytesToMultibase, hexToBytes } from '@veramo/utils'
 import express from 'express'
 import cors from 'cors'
 import bodyParser from 'body-parser'
-import expressWs from 'express-ws'
 // import session from 'express-session'
+import { WebSocketServer } from 'ws';
+
+const multiUser = true
+// const retries = 5
 
 const configFile = './agent.yml'
 const configString = readFileSync(configFile, 'utf8')
@@ -31,15 +34,19 @@ let path = ''
 if (pathParts.length) {
   path = `/${pathParts.join('/')}`
 }
+if (multiUser) {
+  path += '/:user'
+}
 const messagingEndpoint = config.server.init[0]['$args'][0].messagingServiceEndpoint
 const messagingPath = `${path}${messagingEndpoint}`
 const sendPath = `${path}/send`
+const wsPath = `${path}/ws`
 
-const myDidAlias = [host, ...pathParts].join(':')
 const didDocPath = path.length == 0 ? '/.well-known/did.json' : `${path}/did.json`
-const schemaPath = `${path}/open-api.json`
+// const schemaPath = `${path}/open-api.json`
 
 const httpPort = parseInt(config.constants.port)
+const wsPort = 5050
 
 const didCommType = 'application/didcomm-encrypted+json'
 
@@ -103,45 +110,63 @@ const agent = createAgent({
   ],
 })
 
-async function createDID() {
-  const did = await agent.didManagerCreate({ alias: myDidAlias }).catch(console.error)
-  console.log(`New did ${myDidAlias} created`)
+async function createDID(alias) {
+  const did = await agent.didManagerCreate({ alias: alias }).catch(console.error)
+  console.log(`New did ${alias} created`)
+  let msgEndPoint = `${scheme}//${host}${messagingPath}`
+  if (multiUser) {
+    msgEndPoint = msgEndPoint.replace(':user', alias.split(':').pop())
+  }
   const msgService = {
-    "id": "#messaging",
+    "id": `did:web:${alias}#messaging`,
     "type": "DIDCommMessaging",
-    "serviceEndpoint": `${scheme}//${host}${messagingPath}`,
+    "serviceEndpoint": msgEndPoint,
     "description": "Send and receive messages"
   }
   await agent.didManagerAddService({ did: did.did, service: msgService}).catch(console.error)
   did.services.push(msgService)
-
   const x2Key = await agent.keyManagerCreate({ kms: 'local', type: 'X25519' })
   await agent.didManagerAddKey({ did: did.did, key: x2Key }).catch(console.error)
   did.keys.push(x2Key)
-
   return did
 }
 
-function getDidDocument(req, res) {
+async function getMyDid(user) {
+  let alias = [host, ...pathParts].join(':')
+  let did
+  if (user) {
+    alias += `:${user}`
+  }
+  const dids = await agent.didManagerFind({ alias: alias })
+  if (dids.length > 0) {
+    did = dids[0]
+  }
+  else {
+    did = await createDID(alias).catch(console.error)
+  }
+  return { alias, did}
+}
+async function getDidDocument(req, res) {
+  const {alias, did} = await getMyDid(req.params.user)
   const contexts = new Set(['https://www.w3.org/ns/did/v1'])
   const verificationMethods = []
   const authentications = []
   const assertionMethods = []
   const didDoc = {
     "@context": [...contexts],
-    "id": `did:web:${myDidAlias}`,
+    "id": `did:web:${alias}`,
     "verificationMethod": [],
     "authentication": [],
     "assertionMethod": [],
     "keyAgreement": [],
-    "service": myDid.services
+    "service": did.services
   }
-  for (const key of myDid.keys) {
-    const keyId = `did:web:${myDidAlias}#${key.kid}`
+  for (const key of did.keys) {
+    const keyId = `did:web:${alias}#${key.kid}`
     didDoc.verificationMethod.push({
       "id": keyId,
       "type": keyTypes[key.type],
-      "controller": `did:web:${myDidAlias}`,
+      "controller": `did:web:${alias}`,
       "publicKeyHex": key.publicKeyHex
     })
     if (key.type == 'X25519') {
@@ -190,37 +215,53 @@ function getDidDocument(req, res) {
     }
   }
   didDoc['@context'] = [...contexts]
+  // console.log(didDoc)
   res.json(didDoc)
 }
 
-async function sendMessage(req, res) {
-  const message = req.query.message
-  const thread = req.query.thread
-  const fromDid = req.query.fromDid
-  const toDid = req.query.toDid
+async function sendDidCommMessage(fromDid, toDid, thread, message) {
   const now = new Date()
   const msgId = now.toISOString()
-  // const didCommMsg = new Message({metaData: msg.metaData })
-  const didCommMsg = new Message({})
-  didCommMsg.id = msgId
-  didCommMsg.created_time = now.getTime() // createdAt
-  didCommMsg.thid = thread // threadId
-  didCommMsg.type = 'Simple Chat'
-  didCommMsg.from = fromDid
-  didCommMsg.to = toDid
-  didCommMsg.body = { content: message } // data
-  console.log(didCommMsg)
-  const packeddidCommMsg = await agent.packDIDCommMessage({
-    packing: 'authcrypt',
-    message: didCommMsg,
-  })
-  console.log(packeddidCommMsg)
-  const result = await agent.sendDIDCommMessage({
-    messageId: msgId,
-    threadId: thread,
-    packedMessage: packeddidCommMsg,
-    recipientDidUrl: didCommMsg.to,
-  })
+  const didCommMsg = {
+    id: msgId,
+    created_time: now.getTime(), // createdAt
+    thid: thread, // threadId
+    type: 'Simple Chat',
+    from: fromDid,
+    to: toDid,
+    body: { content: message }, // data
+  }
+  // console.log(didCommMsg)
+  try {
+    const packeddidCommMsg = await agent.packDIDCommMessage({
+      packing: 'authcrypt',
+      message: didCommMsg,
+    })
+    // console.log(packeddidCommMsg)
+    const result = await agent.sendDIDCommMessage({
+      messageId: msgId,
+      threadId: thread,
+      packedMessage: packeddidCommMsg,
+      recipientDidUrl: didCommMsg.to,
+    })
+    return result
+  }
+  catch (e) {
+    return false
+  }
+}
+
+async function sendMessageHTTP(req, res) {
+  const { alias, did } = await getMyDid(req.params.user)
+  const fromDid = `did:web:${alias}`
+  const toDid = req.query.toDid
+  const message = req.query.message
+  const thread = req.query.thread
+  const result = sendDidCommMessage(fromDid, toDid, thread, message)
+  if (!result) {
+    res.status(500).send('Could not send message.')
+  }
+  console.log(`Sent message to ${toDid}`)
   res.json(result)
 }
 
@@ -251,14 +292,13 @@ async function receiveMessage(req, res) {
     const msg = await agent.handleMessage({raw: raw})
     console.log(msg)
     if (socket) {
-      socket.on('message', (reply) => {
-        console.log(reply)
-      })
-      socket.send(JSON.stringify(msg))
+      socket.send(JSON.stringify(msg.data.content))
       res.send('OK')
+      console.log('Relayed to websocket')
     }
     else {
-      res.status(503).headers('Retry-After: 10').send('Websocket not yet listening. Please try again later!')
+      res.set('Retry-After: 10').status(503).send('Websocket not yet listening. Please try again later!')
+      console.log('Could not relay to websocket')
     }
     /*
     // await agent.dataStoreSaveMessage(msg)
@@ -303,38 +343,50 @@ async function receiveMessage(req, res) {
   }
 }
 
-async function setupSockets(ws, req) {
+const wss = new WebSocketServer({ port: wsPort })
+console.log(`Websocket server listening on ${wsPort}`)
+wss.on('connection', async function connection(ws) {
   socket = ws
-}
+  socket.on('error', console.error);
+  socket.on('message', async (data) => {
+    console.log(typeof data)
+    console.log(data.toString())
+    let json
+    try {
+      json = JSON.parse(data.toString())
+    }
+    catch(e) {
+      console.error('Could not parse JSON!')
+      console.log(payload)
+      socket.send('Error')
+    }
+    const { alias, toDid, message, thread } = json
+    const fromDid = `did:web:${alias}`
+    const result = await sendDidCommMessage(fromDid, toDid, thread, message)
+    // socket.send(result)
+  })
 
-const dids = await agent.didManagerFind({ alias: myDidAlias })
-if (dids.length > 0) {
-  myDid = dids[0]
-}
-else {
-  myDid = await createDID().catch(console.error)
-}
-
-/*
-const messagingRouter = MessagingRouter({
-  metaData: { type: 'express' },
-})
-*/
-
-
+});
 
 const app = express()
-expressWs(app)
 app.set('trust proxy', 1)
 app.use(cors())
+app.use((req, res, next) => {
+  console.log(req.method, req.url)
+  next()
+})
 app.use(bodyParser.json({type: didCommType}))
 app.use(bodyParser.text({type: 'text/plain'}))
-app.get(path, (req, res) => { res.json(agent.availableMethods()) })
+// app.get(path, (req, res) => { res.json(agent.availableMethods()) })
+app.get(path, (req, res) => {
+  res.sendFile(new URL('./index.html', import.meta.url).pathname)
+})
 app.post(messagingPath, receiveMessage)
 app.get(messagingPath, receiveMessage)
-app.get(sendPath, sendMessage)
+app.get(sendPath, sendMessageHTTP)
 app.get(didDocPath, getDidDocument)
-app.ws('/', setupSockets)
+// app.ws(wsPath, setupSockets)
+app.get(wsPath, (req, res) => { console.log('http call to ws path'); res.send('http call to ws path') })
 var server = app.listen(httpPort, (err) => {
   if (err) { console.error(err) }
   console.log(`Server running on port ${httpPort}, public address ${baseUrl}`)
