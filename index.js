@@ -22,7 +22,7 @@ import bodyParser from 'body-parser'
 // import session from 'express-session'
 import { WebSocketServer } from 'ws';
 
-const multiUser = true
+// const multiUser = true
 // const retries = 5
 
 const configFile = './agent.yml'
@@ -34,15 +34,17 @@ let path = ''
 if (pathParts.length) {
   path = `/${pathParts.join('/')}`
 }
-if (multiUser) {
-  path += '/:user'
-}
+const userPath = path + '/:user'
 const messagingEndpoint = config.server.init[0]['$args'][0].messagingServiceEndpoint
 const messagingPath = `${path}${messagingEndpoint}`
+const userMessagingPath = `${userPath}${messagingEndpoint}`
 const sendPath = `${path}/send`
+const userSendPath = `${userPath}/send`
 const wsPath = `${path}/ws`
+const userWsPath = `${userPath}/ws`
 
 const didDocPath = path.length == 0 ? '/.well-known/did.json' : `${path}/did.json`
+const userDidDocPath = `${userPath}/did.json`
 // const schemaPath = `${path}/open-api.json`
 
 const httpPort = parseInt(config.constants.port)
@@ -113,8 +115,8 @@ async function createDID(alias) {
   const did = await agent.didManagerCreate({ alias: alias }).catch(console.error)
   console.log(`New did ${alias} created`)
   let msgEndPoint = `${scheme}//${host}${messagingPath}`
-  if (multiUser) {
-    msgEndPoint = msgEndPoint.replace(':user', alias.split(':').pop())
+  if (alias.includes(':')) {
+    msgEndPoint = `${scheme}//${host}${userMessagingPath}`.replace(':user', alias.split(':').pop())
   }
   const msgService = {
     "id": `did:web:${alias}#messaging`,
@@ -274,8 +276,8 @@ async function receiveMessage(req, res) {
   // creates users if they don't exist yet  :)
   const { alias, did } = await getMyDid(user)
   const socket = sockets[alias]
-  let json
-  let raw
+  let json = req.body
+  let raw = req.body
   if (req.method == 'GET') {
     json = req.query
     raw = JSON.stringify(json)
@@ -284,8 +286,8 @@ async function receiveMessage(req, res) {
     json = req.body
     raw = JSON.stringify(json)
   }
-  else if (req.headers['content-type'].includes('text/plain')) {
-    raw = req.body
+  // else if (req.headers['content-type'].includes('text/plain')) {
+  else {
     try {
       json = JSON.parse(raw)
     }
@@ -320,38 +322,6 @@ async function receiveMessage(req, res) {
   console.log(`Message ${msg.id} saved`)
 }
 
-/*
-
-const wss = new WebSocketServer({ port: wsPort })
-console.log(`Websocket server listening on ${wsPort}`)
-wss.on('connection', async function connection(ws) {
-  socket = ws
-  socket.on('error', console.error);
-  socket.on('message', async (data) => {
-    console.log(data.toString())
-    let json
-    try {
-      json = JSON.parse(data.toString())
-    }
-    catch(e) {
-      console.error('Could not parse JSON!')
-      console.log(payload)
-      socket.send('Error')
-    }
-    const { alias, toDid, message, thread } = json
-    const fromDid = `did:web:${alias}`
-    try {
-      const result = await sendDidCommMessage(fromDid, toDid, thread, message)
-    }
-    catch(e) {
-      console.error(e)
-    }
-    // socket.send(result)
-  })
-
-});
-*/
-
 const app = express()
 app.set('trust proxy', 1)
 app.use(cors())
@@ -362,13 +332,22 @@ app.use((req, res, next) => {
 app.use(bodyParser.json({type: didCommType}))
 app.use(bodyParser.text({type: 'text/plain'}))
 // app.get(path, (req, res) => { res.json(agent.availableMethods()) })
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(new URL('./favicon.ico', import.meta.url).pathname)
+})
 app.get(path, (req, res) => {
+  res.sendFile(new URL('./operator.html', import.meta.url).pathname)
+})
+app.get(userPath, (req, res) => {
   res.sendFile(new URL('./index.html', import.meta.url).pathname)
 })
 app.post(messagingPath, receiveMessage)
-app.get(messagingPath, receiveMessage)
+app.post(userMessagingPath, receiveMessage)
+// app.get(messagingPath, receiveMessage)
 app.get(sendPath, sendMessageHTTP)
+app.get(userSendPath, sendMessageHTTP)
 app.get(didDocPath, getDidDocument)
+app.get(userDidDocPath, getDidDocument)
 // app.get(wsPath, (req, res) => {console.log(req.headers); res.set('Upgrade: websocket').set('Connection: upgrade').sendStatus(101)})
 server = app.listen(httpPort, (err) => {
   if (err) { console.error(err) }
@@ -376,23 +355,29 @@ server = app.listen(httpPort, (err) => {
 })
 server.on('upgrade', setupSocket)
 
+function heartbeat() {
+  this.isAlive = true;
+}
 async function setupSocket(req, socket, head) {
   let user = '' // even empty string can be used as an object key
-  if (multiUser) {
+  if (req.url != path) {
     user = req.url.replace('/', '')
   }
   const { alias, did } = await getMyDid(user)
 
   const wsServer = new WebSocketServer({ noServer: true })
-  function heartbeat() {
-    this.isAlive = true;
-  }
   wsServer.on('connection', function connection(ws) {
     sockets[alias] = ws
     ws.isAlive = true;
     ws.on('error', console.error)
     ws.on('pong', heartbeat)
     ws.on('message', async (data) => {
+      // console.log(typeof data)
+      if (data.toString().toLowerCase() == "ping") {
+        // console.log('Got ping')
+        ws.send("pong")
+        return
+      }
       console.log(data.toString())
       let json
       try {
@@ -400,8 +385,9 @@ async function setupSocket(req, socket, head) {
       }
       catch(e) {
         console.error('Could not parse JSON!')
-        console.log(payload)
+        console.log(data)
         ws.send('Error')
+        return
       }
       const { toDid, message, thread } = json
       const fromDid = `did:web:${alias}`
