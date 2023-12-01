@@ -55,11 +55,16 @@
    const msgs = document.getElementById('messages')
 
    const url = document.location.href.replace(/^https/, 'wss').replace(/\/?$/, '/ws')
-   console.log(url)
+   // console.log(url)
    const socket = new WebSocket(url)
-   socket.addEventListener("open", (event) => {
-    // console.log('socket opened')
-   })
+   function heartbeat() {
+    clearTimeout(this.pingTimeout)
+    this.pingTimeout = setTimeout(() => {
+     this.terminate()
+    }, 30000 + 1000)
+   }
+   socket.addEventListener("open", heartbeat)
+   socket.addEventListener("ping", heartbeat)
    socket.addEventListener("error", (event) => {
     console.log(event)
    })
@@ -70,6 +75,9 @@
     p.className = 'other'
     p.textContent = msg
     msgs.appendChild(p)
+   })
+   socket.addEventListener("close", (event) => {
+    clearTimeout(this.pingTimeout)
    })
 
    const f = document.getElementById('form')

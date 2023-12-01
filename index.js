@@ -269,9 +269,11 @@ async function sendMessageHTTP(req, res) {
 async function receiveMessage(req, res) {
   let user = ''
   if (multiUser) {
-    user = req.url.replace(messagingEndpoint, '').replace('/', ':')
+    user = req.url.replace(messagingEndpoint, '').replace('/', '')
   }
-  const socket = sockets[user]
+  // creates users if they don't exist yet  :)
+  const { alias, did } = await getMyDid(user)
+  const socket = sockets[alias]
   let json
   let raw
   if (req.method == 'GET') {
@@ -296,7 +298,7 @@ async function receiveMessage(req, res) {
   }
   try {
     const msg = await agent.handleMessage({raw: raw})
-    console.log(msg)
+    // console.log(msg)
     if (socket) {
       // socket.send(JSON.stringify(msg.data.content))
       socket.send(msg.data.content)
@@ -304,51 +306,18 @@ async function receiveMessage(req, res) {
       console.log('Relayed to websocket')
     }
     else {
-      console.log(`No socket for ${user}`)
+      console.log(`No socket for ${alias}`)
       res.set('Retry-After: 10').status(503).send('Websocket not yet listening. Please try again later!')
       console.log('Could not relay to websocket')
     }
-    /*
-    // await agent.dataStoreSaveMessage(msg)
-    const now = new Date()
-    const msgId = now.toISOString()
-    const reply = new Message({metaData: msg.metaData })
-    reply.id = msgId
-    reply.createdAt = now.getTime()
-    reply.threadId = msg.threadId
-    reply.type = msg.type
-    reply.data = { content: 'Viesti' }
-    reply.from = msg.to
-    reply.to = msg.from
-    // console.log(reply)
-    const packedReply = await agent.packDIDCommMessage({
-      packing: 'authcrypt',
-      message: reply,
-    })
-    const returnRouteResponse = msg?.metaData?.find((v) => v.type === 'ReturnRouteResponse')
-    if (returnRouteResponse && returnRouteResponse.value) {
-      const returnMessage = JSON.parse(returnRouteResponse.value)
-      console.log('return path found:')
-      console.log(returnMessage)
-      const result = await agent.sendDIDCommMessage({
-        messageId: msgId,
-        packedReply,
-        recipientDidUrl: msg.from,
-      })
-      // console.log(result)
-      agent.emit('DIDCommV2Message-sent', returnMessage.id)
-      res.json(returnMessage.message)
-    } else if (msg) {
-      res.contentType('text/plain').send(packedReply.message)
-      console.log(`Responded with ${packedReply.message}`)
-    }
-    */
   }
   catch(e) {
     console.warn('Error parsing message')
     console.log(JSON.stringify(json, null, 1))
     console.error(e)
   }
+  await agent.dataStoreSaveMessage(msg).catch(console.error)
+  console.log(`Message ${msg.id} saved`)
 }
 
 /*
@@ -410,12 +379,19 @@ server.on('upgrade', setupSocket)
 async function setupSocket(req, socket, head) {
   let user = '' // even empty string can be used as an object key
   if (multiUser) {
-    user = req.url.replace('/', ':')
+    user = req.url.replace('/', '')
   }
+  const { alias, did } = await getMyDid(user)
+
   const wsServer = new WebSocketServer({ noServer: true })
+  function heartbeat() {
+    this.isAlive = true;
+  }
   wsServer.on('connection', function connection(ws) {
-    sockets[user] = ws
+    sockets[alias] = ws
+    ws.isAlive = true;
     ws.on('error', console.error)
+    ws.on('pong', heartbeat)
     ws.on('message', async (data) => {
       console.log(data.toString())
       let json
@@ -427,7 +403,6 @@ async function setupSocket(req, socket, head) {
         console.log(payload)
         ws.send('Error')
       }
-      let alias = [host, ...pathParts].join(':') + user
       const { toDid, message, thread } = json
       const fromDid = `did:web:${alias}`
       try {
@@ -438,9 +413,19 @@ async function setupSocket(req, socket, head) {
       }
     })
   })
-  console.log(`Initiated websocket server for ${user}`)
+  const interval = setInterval(function ping() {
+    wsServer.clients.forEach(function each(ws) {
+      if (ws.isAlive === false) return ws.terminate()
+      ws.isAlive = false
+      ws.ping()
+    })
+  }, 30000)
+  wsServer.on('close', function close() {
+    clearInterval(interval);
+  });
+  console.log(`Initiated websocket server for ${alias}`)
   wsServer.handleUpgrade(req, socket, head, (ws) => {
-    console.log(`Handling upgrade for ${user}`)
+    console.log(`Handling upgrade for ${alias}`)
     wsServer.emit('connection', ws, req)
   })
 }
