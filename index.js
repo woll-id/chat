@@ -3,7 +3,7 @@ import * as yaml from 'js-yaml'
 import { createAgent } from '@veramo/core'
 import { KeyManager } from '@veramo/key-manager'
 import { KeyManagementSystem, SecretBox } from '@veramo/kms-local'
-import { Entities, KeyStore, DIDStore, PrivateKeyStore, migrations } from '@veramo/data-store'
+import { Entities, KeyStore, DIDStore, PrivateKeyStore, DataStore, migrations } from '@veramo/data-store'
 import { DataSource } from 'typeorm'
 import { DIDManager } from '@veramo/did-manager'
 import { DIDResolverPlugin } from '@veramo/did-resolver'
@@ -107,7 +107,8 @@ const agent = createAgent({
         // new MyMessageHandler()
       ],
     }),
-    new DIDComm()
+    new DIDComm(),
+    new DataStore({dbConnection})
   ],
 })
 
@@ -272,7 +273,7 @@ async function sendMessageHTTP(req, res) {
 
 async function receiveMessage(req, res) {
   let user = ''
-  if (multiUser) {
+  if (req.url != path) {
     user = req.url.replace(messagingEndpoint, '').replace('/', '')
   }
   // creates users if they don't exist yet  :)
