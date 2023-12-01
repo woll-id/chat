@@ -8,56 +8,78 @@
   <meta name="HandheldFriendly" content="True">
   <meta name="MobileOptimized" content="width">
   <link rel="icon" href="../favicon.ico" type="image/x-icon" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hedvig+Letters+Sans&display=swap" rel="stylesheet">
   <title>Secure Chat client</title>
   <style>
+    body {
+      background: linear-gradient(#9CF, #8BD);
+      background-repeat: no-repeat;
+      font-family: 'Hedvig Letters Sans', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      padding: 2em;
+    }
     fieldset {
-        border-radius: 0.5em;
-        max-width: 20em;
+      background-color: #FFF;
+      border-radius: 0.5em;
+      box-shadow: -4px 4px 6px #446;
+      max-width: 20em;
     }
     legend {
-        background-color: #FFF;
+      background-color: #446;
+      color: #FFF;
+      border-radius: 0.25em;
     }
+/*
     label, textarea, #messages {
-        display: block;
-        clear: left;
-        float: left;
+      display: block;
+      clear: left;
+      float: left;
     }
+*/
     input[type="submit"] {
       float: right;
     }
+    #messages {
+      width: 100%
+    }
     #messages p, textarea {
-        background-color: #FFF;
-        border: 1px solid #CCC;
-        border-radius: 0.5em;
-        margin-left: 10%;
-        width: 90%;
+      background-color: #FFF;
+      border: 1px solid #CCC;
+      border-radius: 0.5em;
+      margin-left: 10%;
+      padding: 0 0.25em;
+      width: 90%;
     }
     #messages p.other {
-        background-color: aqua;
-        margin-left: 0;
+      background-color: aqua;
+      margin-left: 0;
     }
     label {
-        width: 11ex;
+      display: block;
+    }
+    label span {
+      display: inline-block;
+      width: 9ex;
     }
   </style>
  </head>
  <body>
   <h1>Secure Chat client</h1>
-  <form id="form">
+  <form>
    <fieldset>
     <legend>Chat</legend>
-    <label for="to">To:</label> <input id="to" name="to" size="30" placeholder="URL or DID"/>
-    <label for="name">Name:</label> <input id="name" name="name" size="30"/>
-    <label for="topic">Topic:</label> <input id="topic" name="topic" size="30"/>
-     <div id="messages"></div>
-     <label for="message">Message:</label>
-     <textarea id="message" name="message" cols="30" rows="5"></textarea>
+    <label><span>With:</span> <input name="to" size="30" placeholder="URL or DID"/></label>
+    <label><span>Name:</span> <input name="name" size="30" placeholder="Your name, nickname, or alias"/></label>
+    <label><span>Topic:</span> <input name="topic" size="30" placeholder="What this chat is about"/></label>
+     <div class="messages"></div>
+     <label><span>Message:</span> <textarea name="message" cols="30" rows="5"></textarea></label>
      <input type="submit" name="action" value="Send">
    </fieldset>
   </form>
   <script>
-
-   const msgs = document.getElementById('messages')
 
    const urlParts = [
     'wss:',
@@ -85,24 +107,42 @@
     console.log(event)
    })
    socket.addEventListener("message", (event) => {
-    const msg = event.data
-    console.log(msg)
-    if (msg == 'pong') {
+    if (event.data == 'pong') {
      heartbeat()
      return
     }
+    let msg
+    try {
+     msg = JSON.parse(event.data)
+    }
+    catch (e) {
+      console.error('Could not parse JSON')
+      msg = { message: event.data }
+    }
+    console.log(msg)
+    let f = document.querySelector(`[data-did=${msg.fromDid}]`)
+    if (!f) {
+      f = document.createElement('form')
+      f.outerHTML = formTemplate
+      f.dataset.did = msg.fromDid
+      document.body.appendChild(f)
+    }
+    const msgs = f.querySelector('.messages')
     const p = document.createElement('p')
     p.className = 'other'
-    p.textContent = msg
+    p.textContent = msg.message
     msgs.appendChild(p)
    })
    socket.addEventListener("close", (event) => {
     clearTimeout(pingTimer)
    })
 
-   const f = document.getElementById('form')
-   f.onsubmit = function(e) {
+   const f = document.querySelector('form')
+   const formTemplate = f.outerHTML
+   f.onsubmit = sendMessage
+   function sendMessage(e) {
     e.preventDefault()
+    const msgs = this.querySelector('.messages')
     let toPath = this.to.value
       .replace(/^(https?:\/\/)/, '')
       .replace(/\/?$/, '')
@@ -112,8 +152,13 @@
      toDid: `did:web:${toPath}`,
      message: this.message.value
     }
+    const p = document.createElement('p')
+    p.className = 'me'
+    p.textContent = msg.message
+    msgs.appendChild(p)
     console.log(JSON.stringify(msg))
     socket.send(JSON.stringify(msg))
+    this.message.value = ''
    }
 
    const params = new URLSearchParams(document.location.search)
