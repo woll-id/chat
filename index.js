@@ -305,8 +305,12 @@ async function receiveMessage(req, res) {
     const msg = await agent.handleMessage({raw: raw})
     // console.log(msg)
     if (socket) {
-      const message = msg.data
-      message.fromDid = msg.from
+      const message = {
+        fromDid: msg.from,
+        toDid: msg.to,
+        message: msg.data.content,
+        thread: msg.threadId
+      }
       // socket.send(msg.data.content)
       console.log(message)
       socket.send(JSON.stringify(message))

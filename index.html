@@ -42,10 +42,10 @@
     input[type="submit"] {
       float: right;
     }
-    #messages {
+    .messages {
       width: 100%
     }
-    #messages p, textarea {
+    .messages p, textarea {
       background-color: #FFF;
       border: 1px solid #CCC;
       border-radius: 0.5em;
@@ -53,7 +53,7 @@
       padding: 0 0.25em;
       width: 90%;
     }
-    #messages p.other {
+    .messages p.other {
       background-color: aqua;
       margin-left: 0;
     }
@@ -120,14 +120,17 @@
       msg = { message: event.data }
     }
     console.log(msg)
-    let f = document.querySelector(`[data-did=${msg.fromDid}]`)
-    if (!f) {
-      f = document.createElement('form')
-      f.outerHTML = formTemplate
-      f.dataset.did = msg.fromDid
-      document.body.appendChild(f)
+    let tf = document.querySelector(`[data-did="${msg.fromDid}"]`)
+    if (!tf) {
+      tf = document.createElement('form')
+      tf.innerHTML = formTemplate
+      tf.dataset.did = msg.fromDid
+      tf.to.value = msg.fromDid
+      tf.topic.value = msg.thread
+      tf.onsubmit = sendMessage
+      document.body.appendChild(tf)
     }
-    const msgs = f.querySelector('.messages')
+    const msgs = tf.querySelector('.messages')
     const p = document.createElement('p')
     p.className = 'other'
     p.textContent = msg.message
@@ -138,7 +141,7 @@
    })
 
    const f = document.querySelector('form')
-   const formTemplate = f.outerHTML
+   const formTemplate = f.innerHTML
    f.onsubmit = sendMessage
    function sendMessage(e) {
     e.preventDefault()
@@ -147,9 +150,12 @@
       .replace(/^(https?:\/\/)/, '')
       .replace(/\/?$/, '')
       .replace('/', ':')
+    if (!toPath.match(/^did:/)) {
+      toPath = `did:web:${toPath}`
+    }
     const msg = {
      thread: this.topic.value,
-     toDid: `did:web:${toPath}`,
+     toDid: toPath,
      message: this.message.value
     }
     const p = document.createElement('p')
