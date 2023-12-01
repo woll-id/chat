@@ -234,6 +234,8 @@ async function sendDidCommMessage(fromDid, toDid, thread, message) {
   }
   console.log(didCommMsg)
   try {
+    await agent.dataStoreSaveMessage(didCommMsg).catch(console.error)
+    console.log(`Message ${didCommMsg.id} saved`)
     const packeddidCommMsg = await agent.packDIDCommMessage({
       packing: 'authcrypt',
       message: didCommMsg,
@@ -312,14 +314,14 @@ async function receiveMessage(req, res) {
       res.set('Retry-After: 10').status(503).send('Websocket not yet listening. Please try again later!')
       console.log('Could not relay to websocket')
     }
+    await agent.dataStoreSaveMessage(msg).catch(console.error)
+    console.log(`Message ${msg.id} saved`)
   }
   catch(e) {
     console.warn('Error parsing message')
     console.log(JSON.stringify(json, null, 1))
     console.error(e)
   }
-  await agent.dataStoreSaveMessage(msg).catch(console.error)
-  console.log(`Message ${msg.id} saved`)
 }
 
 const app = express()
