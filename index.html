@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="HandheldFriendly" content="True">
   <meta name="MobileOptimized" content="width">
-  <title>Secure Chat test</title>
+  <link rel="icon" href="../favicon.ico" type="image/x-icon" />
+  <title>Secure Chat client</title>
   <style>
     fieldset {
         border-radius: 0.5em;
@@ -16,12 +17,15 @@
     legend {
         background-color: #FFF;
     }
-    label, textarea, input[type="submit"], #messages {
+    label, textarea, #messages {
         display: block;
         clear: left;
         float: left;
     }
-    #messages p {
+    input[type="submit"] {
+      float: right;
+    }
+    #messages p, textarea {
         background-color: #FFF;
         border: 1px solid #CCC;
         border-radius: 0.5em;
@@ -38,11 +42,11 @@
   </style>
  </head>
  <body>
-  <h1>Secure Chat test</h1>
+  <h1>Secure Chat client</h1>
   <form id="form">
    <fieldset>
     <legend>Chat</legend>
-    <label for="to">To:</label> <input id="to" name="to" size="30"/>
+    <label for="to">To:</label> <input id="to" name="to" size="30" placeholder="URL or DID"/>
     <label for="name">Name:</label> <input id="name" name="name" size="30"/>
     <label for="topic">Topic:</label> <input id="topic" name="topic" size="30"/>
      <div id="messages"></div>
@@ -52,32 +56,48 @@
    </fieldset>
   </form>
   <script>
+
    const msgs = document.getElementById('messages')
 
-   const url = document.location.href.replace(/^https/, 'wss').replace(/\/?$/, '/ws')
-   // console.log(url)
+   const urlParts = [
+    'wss:',
+    '',
+    document.location.host,
+    document.location.pathname.replace(/^\//, '').replace(/\/$/, ''),
+    'ws'
+   ]
+   const url = urlParts.join('/')
    const socket = new WebSocket(url)
+   let pingTimer
    function heartbeat() {
-    clearTimeout(this.pingTimeout)
-    this.pingTimeout = setTimeout(() => {
-     this.terminate()
-    }, 30000 + 1000)
+    clearTimeout(pingTimer)
+    pingTimer = setTimeout(() => {
+     socket.send('ping')
+    }, 15000)
    }
    socket.addEventListener("open", heartbeat)
-   socket.addEventListener("ping", heartbeat)
+   socket.addEventListener("ping", (event) => {
+    console.log(event)
+    socket.send("pong")
+    heartbeat()
+   })
    socket.addEventListener("error", (event) => {
     console.log(event)
    })
    socket.addEventListener("message", (event) => {
     const msg = event.data
     console.log(msg)
+    if (msg == 'pong') {
+     heartbeat()
+     return
+    }
     const p = document.createElement('p')
     p.className = 'other'
     p.textContent = msg
     msgs.appendChild(p)
    })
    socket.addEventListener("close", (event) => {
-    clearTimeout(this.pingTimeout)
+    clearTimeout(pingTimer)
    })
 
    const f = document.getElementById('form')
@@ -92,10 +112,18 @@
      toDid: `did:web:${toPath}`,
      message: this.message.value
     }
-    socket.send(JSON.stringify(msg))
     console.log(JSON.stringify(msg))
+    socket.send(JSON.stringify(msg))
    }
 
+   const params = new URLSearchParams(document.location.search)
+   for (const field of f.elements) {
+    if (!field.id) continue
+    const value = params.get(field.id)
+    if (value) {
+      field.value = value
+    }
+   }
 
 /*
    socket.onmessage((event) => {
