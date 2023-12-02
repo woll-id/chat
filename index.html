@@ -123,7 +123,9 @@
       form.classList.remove('active')
     }
     f.classList.add('active')
+    return f
    }
+
    window.onbeforeunload = (e) => {
     document.cookie = "opened=false; SameSite=None; Secure"
    }
