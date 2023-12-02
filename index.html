@@ -252,11 +252,10 @@
    }
 
    async function checEstablishment(e) {
-    const estFile = 'https://samuelmr.github.io/difhack-company/trustworthy-organizations.json'
-    const schema = 'https://samuelmr.github.io/difhack/trustworthy-organization.schema.json'
+    const estFile = 'https://woll-id.github.io/chat/trustworthy-organizations.json'
+    const schema = 'https://woll-id.github.io/chat/trustworthy-organization.schema.json'
     const response = await fetch(estFile)
     const estJSON = await response.json()
-    // const dids = Object.keys(estJSON.entries[schema])
     if (estJSON.entries[schema][this.value]) {
       const author = estJSON.author.replace(/did:[^:]+:/, '')
       const since = estJSON.entries[schema][this.value].since
