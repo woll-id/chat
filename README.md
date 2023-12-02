@@ -1,5 +1,11 @@
 # Secure Chat over DIDComm #
 
+Created for [Decentralized Identity Foundation Hackathon](https://difhackathon.devpost.com/).
+
+Just a demo, not even proof-of-concept, let alone working product. Don't use for anything important.
+
+[Apache 2 licensed](LICENSE) so you can exploit the idea and the code however you want.
+
 ## Install ## 
 
 ```sh
@@ -28,6 +34,8 @@ I run Apache as an SSL proxy in front of the application. Apache routes all requ
     Header        set   Host          %{Host}e
 </IfModule>
 ```
+[Express](https://expressjs.com/) is serving both HTTP and WebSocket services in the same port.
+
 ## Run
 
 I use [PM2](https://pm2.keymetrics.io/) to keep the service running.

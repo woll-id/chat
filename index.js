@@ -335,18 +335,28 @@ async function receiveMessage(req, res) {
 const app = express()
 app.set('trust proxy', 1)
 app.use(cors())
+/*
 app.use((req, res, next) => {
   console.log(req.method, req.url)
   next()
 })
+*/
 app.use(bodyParser.json({type: didCommType}))
 app.use(bodyParser.text({type: 'text/plain'}))
-// app.get(path, (req, res) => { res.json(agent.availableMethods()) })
 app.get('/favicon.ico', (req, res) => {
   res.sendFile(new URL('./favicon.ico', import.meta.url).pathname)
 })
-app.get(path, (req, res) => {
+app.get(`${path}/intro`, (req, res) => {
+  res.sendFile(new URL('./intro.html', import.meta.url).pathname)
+})
+app.get(`${path}/`, (req, res) => {
   res.sendFile(new URL('./index.html', import.meta.url).pathname)
+})
+app.get('/operator.css', (req, res) => {
+  res.sendFile(new URL('./operator.css', import.meta.url).pathname)
+})
+app.get('/wallet.css', (req, res) => {
+  res.sendFile(new URL('./wallet.css', import.meta.url).pathname)
 })
 app.get(userPath, (req, res) => {
   res.sendFile(new URL('./index.html', import.meta.url).pathname)
@@ -419,9 +429,9 @@ async function setupSocket(req, socket, head) {
   wsServer.on('close', function close() {
     clearInterval(interval);
   });
-  console.log(`Initiated websocket server for ${alias}`)
+  // console.log(`Initiated websocket server for ${alias}`)
   wsServer.handleUpgrade(req, socket, head, (ws) => {
-    console.log(`Handling upgrade for ${alias}`)
+    // console.log(`Handling upgrade for ${alias}`)
     wsServer.emit('connection', ws, req)
   })
 }

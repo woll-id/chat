@@ -1,152 +1,31 @@
-
 <!doctype html>
 <html>
  <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="width">
-  <link rel="icon" href="../favicon.ico" type="image/x-icon" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hedvig+Letters+Sans&display=swap" rel="stylesheet">
-  <title>Secure Chat client</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="HandheldFriendly" content="True"/>
+  <meta name="MobileOptimized" content="width"/>
+  <link rel="icon" href="../favicon.ico" type="image/x-icon"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Hedvig+Letters+Sans&display=swap" rel="stylesheet"/>
+  <link id="style" href="/wallet.css" rel="stylesheet"/>
+  <title>WollID</title>
   <style>
-    :root {
-      --base-hue: 200;
-      --base-saturation: 30%;
-      --base-lightness: 75%;
-      --backgroung-start: hsl(var(--base-hue), var(--base-saturation), var(--base-lightness));
-      --backgroung-end: hsl(var(--base-hue), var(--base-saturation), 65%);
-      --text-color: hsl(var(--base-hue), 50%, 0.5%);
-    }
-    body {
-      background-color: #FFF;
-      font-family: 'Hedvig Letters Sans', sans-serif;
-      margin: 0;
-      min-height: 100vh;
-      padding: 2em;
-    }
-    h1 {
-      flex: 0 0 100%;
-    }
-    #chats {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-    form {
-      margin: 2em 3em 1em 0;
-      max-width: 90vw;
-/*
-      flex: 0 1 auto;
-      overflow: auto;
-*/
-    }
-    fieldset {
-      background: linear-gradient(var(--backgroung-start), var(--backgroung-end));
-      background-repeat: no-repeat;
-      border-color: hsla(var(--base-hue), 50%, 60%, 50%);
-      border-radius: 0.5em;
-      box-shadow: -4px 4px 6px hsla(var(--base-hue), 50%, 25%, 50%);
-      color: #222;
-      max-width: 100%;
-      min-width: 0;
-/*
-      overflow: auto;
-*/
-      width: 30em;
-    }
-    .failed fieldset {
-      background-color: #CCC;
-    }
-    legend {
-      background-color: #446;
-      color: #FFF;
-      border-radius: 0.25em;
-    }
-    .waiting legend {
-      background-color: #F46;
-    }
-/*
-    label, textarea, #messages {
-      display: block;
-      clear: left;
-      float: left;
-    }
-*/
-    input, textarea {
-      background-color: #FFF;
-      border: 1px solid #CCC;
-      border-radius: 0.25em;
-    }
-    textarea {
-      float: right;
-      width: 98%;
-    }
-    input[type="submit"] {
-      clear: right;
-      float: right;
-    }
-    a.trusworthy {
-      color: green;
-      margin-left: 0.5em;
-      text-decoration: none;
-    }
-    .messages {
-      max-height: 65vh;
-      overflow-y: auto;
-      max-width: 100%;
-    }
-    .messages p {
-      background-color: hsla(var(--base-hue), 0%, 100%, 80%);
-      border: 1px solid #CCC;
-      border-radius: 0.5em;
-      margin: 0.5em 0 0 auto;
-      max-height: 50vh;
-      overflow: auto;
-      padding: 0.25em 0.5em;
-      white-space: pre-line;
-      width: 90%;
-    }
-    .messages p.pre {
-      white-space: pre;
-      max-height: none;
-    }
-    .messages p.other {
-      background-color: hsla(var(--base-hue), 0%, 100%, 90%);
-      margin: 0.5em auto 0 0;
-    }
-    label {
-      display: block;
-    }
-    label span {
-      display: inline-block;
-      width: 9ex;
-    }
-    @media (prefers-color-scheme: dark) {
-/*
-      form fieldset {
-        background-color: hsl(var(--base-hue), var(--base-saturation), 25%);
-        color: hsl(var(--base-hue), 50%, 99.5%);
-      }
-*/
-      body {
-        background-color: #3A3A3A;
-        color: #CCC;
-      }
-    }
-    @media (max-width: 70em) {
-      fieldset {
-        width: 100%;
-      }
-    }
-
   </style>
  </head>
  <body>
-  <h1>Secure Chat client</h1>
+  <h1>WollID</h1>
+  <nav>
+    <ul>
+      <li>Home</li>
+      <li>Identity</li>
+      <li class="active">Chats</li>
+      <li>Certificates</li>
+      <li>Settings</li>
+    </ul>
+  </nav>
   <div id="chats">
    <form>
     <fieldset>
@@ -155,7 +34,7 @@
      <label><span>Name:</span> <input name="name" size="30" placeholder="Your name, nickname, or alias"/></label>
      <label><span>Topic:</span> <input name="topic" size="30" placeholder="What this chat is about"/></label>
       <div class="messages"></div>
-      <label><span>Message:</span> <textarea name="message" cols="30" rows="5"></textarea></label>
+      <label class="message"><span>Message:</span> <textarea name="message" cols="30" rows="5"></textarea></label>
       <input type="submit" name="action" value="Send">
     </fieldset>
    </form>
@@ -213,7 +92,7 @@
       tf.to.value = msg.fromDid
       tf.topic.value = msg.thread
       tf.onsubmit = sendMessage
-      tf.to.onchange = checEstablishment
+      tf.to.onchange = checkEstablishment
       chats.appendChild(tf)
     }
     const msgs = tf.querySelector('.messages')
@@ -231,15 +110,19 @@
    const f = document.querySelector('form')
    const formTemplate = f.innerHTML
    f.onsubmit = sendMessage
-   f.to.onchange = checEstablishment
+   f.to.onchange = checkEstablishment
 
    const params = new URLSearchParams(document.location.search)
+   if (params.get('mode') == 'operator') {
+    document.getElementById('style').href = '/operator.css'
+   }
    for (const field of f.elements) {
     if (!field.name) continue
     const value = params.get(field.name)
     if (value) {
       field.value = value
       if (field.name == 'to') {
+        f.dataset.did = url2Did(value)
         field.onchange()
       }
     }
@@ -276,7 +159,7 @@
     }
    }
 
-   async function checEstablishment(e) {
+   async function checkEstablishment(e) {
     const estFile = 'https://woll-id.github.io/chat/trustworthy-organizations.json'
     const schema = 'https://woll-id.github.io/chat/trustworthy-organization.schema.json'
     const response = await fetch(estFile)
