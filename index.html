@@ -78,6 +78,7 @@
     }
     a.trusworthy {
       color: green;
+      margin-left: 0.5em;
       text-decoration: none;
     }
     .messages {
@@ -255,8 +256,8 @@
     const schema = 'https://samuelmr.github.io/difhack/trustworthy-organization.schema.json'
     const response = await fetch(estFile)
     const estJSON = await response.json()
-    const dids = Object.keys(estJSON.entries[schema])
-    if (1 || dids[this.value]) {
+    // const dids = Object.keys(estJSON.entries[schema])
+    if (estJSON.entries[schema][this.value]) {
       const author = estJSON.author.replace(/did:[^:]+:/, '')
       const since = estJSON.entries[schema][this.value].since
       const a = document.createElement('a')
@@ -265,9 +266,6 @@
       a.title = `Trustworthy organization according to ${author} since ${since}`
       a.textContent = '✔'
       this.parentNode.appendChild(a)
-    }
-    else {
-      console.log(dids)
     }
    }
 
