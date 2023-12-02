@@ -346,7 +346,7 @@ app.use(bodyParser.text({type: 'text/plain'}))
 app.get('/favicon.ico', (req, res) => {
   res.sendFile(new URL('./favicon.ico', import.meta.url).pathname)
 })
-app.get(`${path}/intro`, (req, res) => {
+app.get(`${path}/dashboard`, (req, res) => {
   res.sendFile(new URL('./intro.html', import.meta.url).pathname)
 })
 app.get(`${path}/`, (req, res) => {

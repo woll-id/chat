@@ -27,7 +27,7 @@
     </ul>
   </nav>
   <div id="chats">
-   <form>
+   <form class="active">
     <fieldset>
      <legend>Chat</legend>
      <label><span>With:</span> <input name="to" size="30" placeholder="URL or DID"/></label>
@@ -47,6 +47,13 @@
    // document.documentElement.style.setProperty("--base-hue", random)
 
    const chats = document.getElementById('chats')
+
+   const b = document.createElement('button')
+   b.className = 'add'
+   b.textContent = 'New chat'
+   b.onclick = newForm
+   chats.parentNode.insertBefore(b, chats)
+
    const urlParts = [
     'wss:',
     '',
@@ -88,13 +95,9 @@
     // console.log(msg)
     let tf = document.querySelector(`[data-did="${msg.fromDid}"]`)
     if (!tf) {
-      tf = document.createElement('form')
-      tf.innerHTML = formTemplate
+      tf = newForm()
       tf.dataset.did = msg.fromDid
       tf.to.value = msg.fromDid
-      tf.onsubmit = sendMessage
-      tf.to.onchange = checkEstablishment
-      chats.appendChild(tf)
     }
     tf.topic.value = msg.thread
     const msgs = tf.querySelector('.messages')
@@ -108,6 +111,22 @@
    socket.addEventListener("close", (event) => {
     clearTimeout(pingTimer)
    })
+
+   function newForm() {
+    const f = document.createElement('form')
+    f.innerHTML = formTemplate
+    f.onsubmit = sendMessage
+    f.to.onchange = checkEstablishment
+    chats.appendChild(f)
+    const forms = document.querySelectorAll('form')
+    for (const form of forms) {
+      form.classList.remove('active')
+    }
+    f.classList.add('active')
+   }
+   window.onbeforeunload = (e) => {
+    document.cookie = "opened=false; SameSite=None; Secure"
+   }
 
    const f = document.querySelector('form')
    const formTemplate = f.innerHTML
