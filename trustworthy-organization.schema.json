@@ -5,7 +5,8 @@
   "type": "object",
   "properties": {
     "since": {
-      "type": "date"
+      "type": "string",
+      "format": "date"
     },
     "name": {
       "type": "string"

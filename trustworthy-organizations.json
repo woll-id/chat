@@ -5,12 +5,12 @@
   "version": "0.0.1",
   "entries": {
     "https://samuelmr.github.io/difhack/trustworthy-organization.schema.json": {
-      "did:chat.ctrldash.app": {
-        "from": "2023-12-01",
+      "did:web:chat.ctrldash.app": {
+        "since": "2023-12-01",
         "name": "Ctrl–"
       },
-      "did:chat.wollid.com": {
-        "from": "2023-11-30",
+      "did:web:chat.wollid.com": {
+        "since": "2023-11-30",
         "name": "Wollid, Inc."
       }
     }
