@@ -31,7 +31,9 @@
     <fieldset>
      <legend>Chat</legend>
      <label><span>With:</span> <input name="to" size="30" placeholder="URL or DID"/></label>
+<!--
      <label><span>Name:</span> <input name="name" size="30" placeholder="Your name, nickname, or alias"/></label>
+-->
      <label><span>Topic:</span> <input name="topic" size="30" placeholder="What this chat is about"/></label>
       <div class="messages"></div>
       <label class="message"><span>Message:</span> <textarea name="message" cols="30" rows="5"></textarea></label>
@@ -90,11 +92,11 @@
       tf.innerHTML = formTemplate
       tf.dataset.did = msg.fromDid
       tf.to.value = msg.fromDid
-      tf.topic.value = msg.thread
       tf.onsubmit = sendMessage
       tf.to.onchange = checkEstablishment
       chats.appendChild(tf)
     }
+    tf.topic.value = msg.thread
     const msgs = tf.querySelector('.messages')
     const p = document.createElement('p')
     p.className = 'other'
@@ -169,6 +171,7 @@
       const author = estJSON.author.replace(/did:[^:]+:/, '')
       const since = estJSON.entries[schema][did].since
       const a = document.createElement('a')
+      a.target='_blank'
       a.className = 'trusworthy'
       a.href = estFile
       a.title = `Trustworthy organization according to ${author} since ${since}`
