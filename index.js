@@ -346,7 +346,7 @@ app.get('/favicon.ico', (req, res) => {
   res.sendFile(new URL('./favicon.ico', import.meta.url).pathname)
 })
 app.get(path, (req, res) => {
-  res.sendFile(new URL('./operator.html', import.meta.url).pathname)
+  res.sendFile(new URL('./index.html', import.meta.url).pathname)
 })
 app.get(userPath, (req, res) => {
   res.sendFile(new URL('./index.html', import.meta.url).pathname)
