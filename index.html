@@ -248,17 +248,11 @@
    function sendMessage(e) {
     e.preventDefault()
     const msgs = this.querySelector('.messages')
-    let toPath = this.to.value
-      .replace(/^(https?:\/\/)/, '')
-      .replace(/\/?$/, '')
-      .replace('/', ':')
-    if (!toPath.match(/^did:/)) {
-      toPath = `did:web:${toPath}`
-    }
-    this.dataset.did = toPath
+    const toDid = url2Did(this.to.value)
+    this.dataset.did = toDid
     const msg = {
      thread: this.topic.value,
-     toDid: toPath,
+     toDid: toDid,
      message: this.message.value
     }
     const p = document.createElement('p')
@@ -267,6 +261,10 @@
     p.ondblclick = togglePre
     msgs.appendChild(p)
     // console.log(JSON.stringify(msg))
+    if (socket.readyState != 1) {
+      this.classList.add('failed')
+      console.error(`Socket not ready: ${socket.readyState}`)
+    }
     try {
       socket.send(JSON.stringify(msg))
       this.message.value = ''
@@ -283,9 +281,10 @@
     const schema = 'https://woll-id.github.io/chat/trustworthy-organization.schema.json'
     const response = await fetch(estFile)
     const estJSON = await response.json()
-    if (estJSON.entries[schema][this.value]) {
+    const did = url2Did(this.value)
+    if (estJSON.entries[schema][did]) {
       const author = estJSON.author.replace(/did:[^:]+:/, '')
-      const since = estJSON.entries[schema][this.value].since
+      const since = estJSON.entries[schema][did].since
       const a = document.createElement('a')
       a.className = 'trusworthy'
       a.href = estFile
@@ -293,6 +292,16 @@
       a.textContent = '✔'
       this.parentNode.appendChild(a)
     }
+   }
+
+   function url2Did(value) {
+    let did = value.replace(/^(https?:\/\/)/, '')
+      .replace(/\/?$/, '')
+      .replace('/', ':')
+    if (!did.match(/^did:/)) {
+      did = `did:web:${did}`
+    }
+    return did
    }
 
    function togglePre(e) {
