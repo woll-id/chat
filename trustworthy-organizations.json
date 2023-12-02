@@ -4,7 +4,7 @@
   "created": "2023-12-01T20:32:00Z",
   "version": "0.0.1",
   "entries": {
-    "https://samuelmr.github.io/difhack/trustworthy-organization.schema.json": {
+    "https://woll-id.github.io/chat/trustworthy-organization.schema.json": {
       "did:web:chat.ctrldash.app": {
         "since": "2023-12-01",
         "name": "Ctrl–"

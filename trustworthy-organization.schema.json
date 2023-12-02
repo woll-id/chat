@@ -1,5 +1,5 @@
 {
-  "$id": "https://samuelmr.github.io/difhack/trustworthy-organization.schema.json",
+  "$id": "https://woll-id.github.io/chat/trustworthy-organization.schema.json",
   "$schema": "https://json-schema.org/draft/2019-09/schema",
   "title": "Trustworthy organization",
   "type": "object",
